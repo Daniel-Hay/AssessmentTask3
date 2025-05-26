@@ -70,6 +70,17 @@ def transcribe_page():
         st.info("🔊 Transcription:")
         st.write(result.text)
 
+        # Summarise the transcription
+        st.markdown("### Summarise Transcription")
+        num_sentences = st.slider("Select number of sentences for summary:", min_value=1, max_value=10, value=3)
+        if st.button("Summarise Transcription"):
+            parser = PlaintextParser.from_string(result.text, Tokenizer("english"))
+            summarizer = LsaSummarizer()
+            summary_sentences = summarizer(parser.document, num_sentences)
+            summary = " ".join(str(sentence) for sentence in summary_sentences)
+            st.info("📝 Summary:")
+            st.write(summary)
+
         # Clean up
         os.remove(temp_audio_path)
 
