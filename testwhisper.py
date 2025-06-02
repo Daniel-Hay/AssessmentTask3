@@ -3,27 +3,56 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
 import streamlit as st
+import sqlite3
 import os
 import tempfile
 
-# --- Simple user database ---
-USERS = {
-    "user1": "pass123",
-    "admin": "admin123"
-}
+# --- User Database Using sqlite ---
+conn = sqlite3.connect('data.db')
+c = conn.cursor()
+c.execute('CREATE TABLE IF NOT EXISTS userstable (username TEXT, password TEXT)')
+conn.commit()
+
+def add_user(username, password):
+    c.execute('INSERT INTO userstable(username, password) VALUES (?, ?)', (username, password))
+    conn.commit()
+
+def login_user(username, password):
+    c.execute('SELECT * FROM userstable WHERE username=? AND password=?', (username, password))
+    return c.fetchone()
+
+def register():
+    st.title("Register")
+    new_username = st.text_input("New Username")
+    new_password = st.text_input("New Password", type="password")
+    if st.button("Register"):
+        # Check if username already exists
+        c.execute('SELECT * FROM userstable WHERE username=?', (new_username,))
+        if c.fetchone():
+            st.error("Username already exists. Please choose another.")
+        elif not new_username or not new_password:
+            st.error("Username and password cannot be empty.")
+        else:
+            add_user(new_username, new_password)
+            st.success("Registration successful! You can now log in.")
 
 def login():
     st.title("Login Page")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if username in USERS and USERS[username] == password:
-            st.session_state["logged_in"] = True
-            st.session_state["username"] = username
-            st.success(f"Welcome {username}!")
-            st.rerun()
-        else:
-            st.error("Invalid username or password")
+    menu = ["Login", "Register"]
+    choice = st.sidebar.selectbox("Menu", menu)
+    if choice == "Login":
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            if login_user(username, password):
+                st.session_state["logged_in"] = True
+                st.session_state["username"] = username
+                st.success(f"Welcome {username}!")
+                st.rerun()
+            else:
+                st.error("Invalid username or password")
+    else:
+        register()
 
 def main_menu():
     st.title(f"Welcome {st.session_state['username']}!")
@@ -67,7 +96,7 @@ def transcribe_page():
         result = whisper.decode(model, mel, options)
 
         # Output transcription
-        st.info("🔊 Transcription:")
+        st.info("Transcription:")
         st.write(result.text)
 
         # Summarise the transcription
@@ -78,7 +107,7 @@ def transcribe_page():
             summarizer = LsaSummarizer()
             summary_sentences = summarizer(parser.document, num_sentences)
             summary = " ".join(str(sentence) for sentence in summary_sentences)
-            st.info("📝 Summary:")
+            st.info("Summary:")
             st.write(summary)
 
         # Clean up
