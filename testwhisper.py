@@ -6,6 +6,7 @@ import streamlit as st
 import sqlite3
 import os
 import tempfile
+import hashlib
 
 # --- User Database Using sqlite ---
 conn = sqlite3.connect('data.db')
@@ -14,12 +15,17 @@ c.execute('CREATE TABLE IF NOT EXISTS userstable (username TEXT, password TEXT)'
 conn.commit()
 
 def add_user(username, password):
-    c.execute('INSERT INTO userstable(username, password) VALUES (?, ?)', (username, password))
+    hashed = hash_password(password)
+    c.execute('INSERT INTO userstable(username, password) VALUES (?, ?)', (username, hashed))
     conn.commit()
 
 def login_user(username, password):
-    c.execute('SELECT * FROM userstable WHERE username=? AND password=?', (username, password))
+    hashed = hash_password(password)
+    c.execute('SELECT * FROM userstable WHERE username=? AND password=?', (username, hashed))
     return c.fetchone()
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 def register():
     st.title("Register")
