@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#0CA37F"                # Anthropic accent green
+backgroundColor = "#F7F8FA"             # Slightly warmer light gray
+secondaryBackgroundColor = "#FFFFFF"    # White for cards/containers
+textColor = "#232629"                   # Deep gray for text
+font = "sans serif"

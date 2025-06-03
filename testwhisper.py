@@ -28,7 +28,6 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def register():
-    st.title("Register")
     new_username = st.text_input("New Username")
     new_password = st.text_input("New Password", type="password")
     if st.button("Register"):
@@ -43,9 +42,9 @@ def register():
             st.success("Registration successful! You can now log in.")
 
 def login():
-    st.title("Login Page")
+    st.title("Shout - Audio Transcription Service")
     menu = ["Login", "Register"]
-    choice = st.sidebar.selectbox("Menu", menu)
+    choice = st.pills("", menu, default="Login")
     if choice == "Login":
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
