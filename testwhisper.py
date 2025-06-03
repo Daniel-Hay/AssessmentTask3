@@ -85,6 +85,7 @@ def transcribe_page():
         # Save uploaded file to a temporary file with correct extension
         file_extension = uploaded_file.name.split(".")[-1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
+            uploaded_file.seek(0)
             tmp_file.write(uploaded_file.read())
             temp_audio_path = tmp_file.name
 
@@ -104,9 +105,19 @@ def transcribe_page():
         st.info("Transcription:")
         st.write(result.text)
 
+        # Count sentence length 
+        sentence_count = result.text.count('.') + result.text.count('!') + result.text.count('?')
+        st.write("Sentence length: ", sentence_count)
+
+        # Compare lengths
+        if sentence_count >= 10:
+            sentence_count = 10
+        else:
+            return
+
         # Summarise the transcription
         st.markdown("### Summarise Transcription")
-        num_sentences = st.slider("Select number of sentences for summary:", min_value=1, max_value=10, value=3)
+        num_sentences = st.slider("Select number of sentences for summary:", min_value=1, max_value=sentence_count, value=3)
         if st.button("Summarise Transcription"):
             parser = PlaintextParser.from_string(result.text, Tokenizer("english"))
             summarizer = LsaSummarizer()
