@@ -8,6 +8,11 @@ import os
 import tempfile
 import hashlib
 
+# Cache model loading, improving performance
+@st.cache_resource
+def get_whisper_model():
+    return whisper.load_model("tiny")
+
 # --- User Database Using sqlite ---
 conn = sqlite3.connect('data.db')
 c = conn.cursor()
@@ -44,7 +49,7 @@ def register():
 def login():
     st.title("Shout - Audio Transcription Service")
     menu = ["Login", "Register"]
-    choice = st.pills("", menu, default="Login")
+    choice = st.pills("Select action", menu, default="Login")
     if choice == "Login":
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -90,7 +95,7 @@ def transcribe_page():
             temp_audio_path = tmp_file.name
 
         # Load whisper model
-        model = whisper.load_model("base")
+        model = get_whisper_model()
 
         # Load audio from saved file
         audio = whisper.load_audio(temp_audio_path)
@@ -108,12 +113,6 @@ def transcribe_page():
         # Count sentence length 
         sentence_count = result.text.count('.') + result.text.count('!') + result.text.count('?')
         st.write("Sentence length: ", sentence_count)
-
-        # Compare lengths
-        if sentence_count >= 10:
-            sentence_count = 10
-        else:
-            return
 
         # Summarise the transcription
         st.markdown("### Summarise Transcription")
