@@ -100,15 +100,20 @@ def transcribe_page():
         # Load audio from saved file
         audio = whisper.load_audio(temp_audio_path)
         audio = whisper.pad_or_trim(audio)
+        st.write("Audio shape: ", audio.shape)
         mel = whisper.log_mel_spectrogram(audio).to(model.device)
-
+        st.write("Mel spectrogram shape: ", mel.shape)
+        
         # Decode
         options = whisper.DecodingOptions()
         result = whisper.decode(model, mel, options)
 
-        # Output transcription
-        st.info("Transcription:")
-        st.write(result.text)
+        # Session state controling UI
+        if "show_summary" not in st.session_state:
+            st.session_state["show_summary"] = False
+        if not st.session_state["show_summary"]:
+            st.info("Transcription in progress... Please wait.")
+            st.write(result.text)
 
         # Count sentence length 
         sentence_count = result.text.count('.') + result.text.count('!') + result.text.count('?')
@@ -122,8 +127,11 @@ def transcribe_page():
             summarizer = LsaSummarizer()
             summary_sentences = summarizer(parser.document, num_sentences)
             summary = " ".join(str(sentence) for sentence in summary_sentences)
+            st.session_state["show_summary"] = True
+            st.rerun()
+        else:
             st.info("Summary:")
-            st.write(summary)
+            st.write(st.session_state.get("summary", ""))
 
         # Clean up
         os.remove(temp_audio_path)
@@ -133,6 +141,7 @@ def transcribe_page():
 
     if st.button("Back to Menu"):
         st.session_state["page"] = "main"
+        st.session_state["show_summary"] = False
         st.rerun()
 
 def main():
