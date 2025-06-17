@@ -127,16 +127,19 @@ def transcribe_page():
 
         # Summarise the transcription
         st.markdown("### Summarise Transcription")
-        num_sentences = st.slider("Select number of sentences for summary:", min_value=1, max_value=sentence_count, value=min(3, sentence_count))
-        if st.button("Summarise Transcription"):
-            parser = PlaintextParser.from_string(result["text"], Tokenizer("english"))
-            summarizer = LsaSummarizer()
-            summary_sentences = summarizer(parser.document, num_sentences)
-            summary = " ".join(str(sentence) for sentence in summary_sentences)
-            st.session_state["summary"] = summary
-            st.session_state["show_summary"] = True
-            st.session_state["transcription_shown"] = False
-            st.rerun()
+        if "show_summary" not in st.session_state:
+            st.session_state["show_summary"] = False
+        if not st.session_state["show_summary"]:
+            num_sentences = st.slider("Select number of sentences for summary:", min_value=1, max_value=sentence_count, value=min(3, sentence_count))
+            if st.button("Summarise Transcription"):
+                parser = PlaintextParser.from_string(result["text"], Tokenizer("english"))
+                summarizer = LsaSummarizer()
+                summary_sentences = summarizer(parser.document, num_sentences)
+                summary = " ".join(str(sentence) for sentence in summary_sentences)
+                st.session_state["summary"] = summary
+                st.session_state["show_summary"] = True
+                st.session_state["transcription_shown"] = False
+                st.rerun()
         else:
             st.write(st.session_state.get("summary", ""))
 
