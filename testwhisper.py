@@ -7,6 +7,7 @@ import sqlite3
 import os
 import tempfile
 import hashlib
+import numpy as np
 
 # Cache model loading, improving performance
 @st.cache_resource
@@ -85,8 +86,6 @@ def transcribe_page():
 
     uploaded_file = st.session_state.get("audio_file", None)
     if uploaded_file:
-        st.success(f"Transcribing: {uploaded_file.name}")
-
         # Save uploaded file to a temporary file with correct extension
         file_extension = uploaded_file.name.split(".")[-1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
@@ -97,44 +96,49 @@ def transcribe_page():
         # Load whisper model
         model = get_whisper_model()
 
-        # Load audio from saved file
-        audio = whisper.load_audio(temp_audio_path)
-        audio = whisper.pad_or_trim(audio)
-        st.write("Audio shape: ", audio.shape)
-        mel = whisper.log_mel_spectrogram(audio).to(model.device)
-        st.write("Mel spectrogram shape: ", mel.shape)
-        
-        # Decode
-        options = whisper.DecodingOptions()
-        result = whisper.decode(model, mel, options)
+        # Check for empty or invalid audio before transcription
+        try:
+            audio = whisper.load_audio(temp_audio_path)
+            if audio is None or (isinstance(audio, np.ndarray) and audio.size == 0):
+                st.error("The uploaded audio file is empty or invalid. Please upload a valid audio file.")
+                os.remove(temp_audio_path)
+                return
+            result = model.transcribe(temp_audio_path)
+        except Exception as e:
+            st.error(f"Failed to transcribe audio: {e}")
+            os.remove(temp_audio_path)
+            return
 
         # Session state controling UI
-        if "show_summary" not in st.session_state:
-            st.session_state["show_summary"] = False
-        if not st.session_state["show_summary"]:
-            st.info("Transcription in progress... Please wait.")
-            st.write(result.text)
+        if "transcription_shown" not in st.session_state:
+            st.success(f"Transcribing: {uploaded_file.name}... Please wait.")
+            st.write("Audio shape:", audio.shape)
+            st.write("First 10 samples:", audio[:10])
+            st.session_state["transcription_shown"] = True
+            st.rerun()
+
+        st.write(result["text"])
 
         # Count sentence length 
-        sentence_count = result.text.count('.') + result.text.count('!') + result.text.count('?')
+        sentence_count = result["text"].count('.') + result["text"].count('!') + result["text"].count('?')
+        if sentence_count <= 1:
+            sentence_count = 2
         st.write("Sentence length: ", sentence_count)
 
         # Summarise the transcription
         st.markdown("### Summarise Transcription")
-        num_sentences = st.slider("Select number of sentences for summary:", min_value=1, max_value=sentence_count, value=3)
+        num_sentences = st.slider("Select number of sentences for summary:", min_value=1, max_value=sentence_count, value=min(3, sentence_count))
         if st.button("Summarise Transcription"):
-            parser = PlaintextParser.from_string(result.text, Tokenizer("english"))
+            parser = PlaintextParser.from_string(result["text"], Tokenizer("english"))
             summarizer = LsaSummarizer()
             summary_sentences = summarizer(parser.document, num_sentences)
             summary = " ".join(str(sentence) for sentence in summary_sentences)
+            st.session_state["summary"] = summary
             st.session_state["show_summary"] = True
+            st.session_state["transcription_shown"] = False
             st.rerun()
         else:
-            st.info("Summary:")
             st.write(st.session_state.get("summary", ""))
-
-        # Clean up
-        os.remove(temp_audio_path)
 
     else:
         st.warning("No audio file found. Please upload and transcribe again.")
@@ -142,6 +146,8 @@ def transcribe_page():
     if st.button("Back to Menu"):
         st.session_state["page"] = "main"
         st.session_state["show_summary"] = False
+        st.session_state["transcription_shown"] = False
+        os.remove(temp_audio_path)
         st.rerun()
 
 def main():
