@@ -1,13 +1,11 @@
 import whisper
-from sumy.parsers.plaintext import PlaintextParser
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.lsa import LsaSummarizer
 import streamlit as st
 import sqlite3
 import os
 import tempfile
 import hashlib
 import numpy as np
+from summa.summarizer import summarize
 
 # Cache model loading, improving performance
 @st.cache_resource
@@ -18,6 +16,7 @@ def get_whisper_model():
 conn = sqlite3.connect('data.db')
 c = conn.cursor()
 c.execute('CREATE TABLE IF NOT EXISTS userstable (username TEXT, password TEXT)')
+c.execute('CREATE TABLE IF NOT EXISTS summaries (username TEXT, title TEXT, summary TEXT, tags TEXT, date TEXT)')
 conn.commit()
 
 def add_user(username, password):
@@ -132,16 +131,34 @@ def transcribe_page():
         if not st.session_state["show_summary"]:
             num_sentences = st.slider("Select number of sentences for summary:", min_value=1, max_value=sentence_count, value=min(3, sentence_count))
             if st.button("Summarise Transcription"):
-                parser = PlaintextParser.from_string(result["text"], Tokenizer("english"))
-                summarizer = LsaSummarizer()
-                summary_sentences = summarizer(parser.document, num_sentences)
-                summary = " ".join(str(sentence) for sentence in summary_sentences)
+                try:
+                    ratio = min(1.0, num_sentences / sentence_count)
+                    summarizer = summarize(result["text"], ratio=ratio)
+                    summary = summarizer if summarizer else "Summary could not be generated. Text may be too short."
+                except Exception as e:
+                    summary = f"Error generating summary: {e}"
                 st.session_state["summary"] = summary
                 st.session_state["show_summary"] = True
                 st.session_state["transcription_shown"] = False
                 st.rerun()
         else:
-            st.write(st.session_state.get("summary", ""))
+            st.info("📝 Summary:")
+            summary_text = st.session_state.get("summary", "")
+            st.write(summary_text)
+            if st.button("Save Summary"):
+                st.session_state["pending_save"] = True
+                st.session_state["pending_summary"] = summary_text
+                st.rerun()
+        
+        if st.session_state.get("pending_save", False):
+            st.header("Save Your Summary")
+            title = st.text_input("Title for your summary")
+            tags = st.text_input("Tags (comma-separated)")
+            if st.button("Submit"):
+                save_summary(st.session_state["username"], title, st.session_state["pending_summary"], tags)
+                st.success("Summary saved successfully!")
+                st.session_state["pending_save"] = False
+                st.session_state["pending_summary"] = ""
 
     else:
         st.warning("No audio file found. Please upload and transcribe again.")
@@ -152,6 +169,10 @@ def transcribe_page():
         st.session_state["transcription_shown"] = False
         os.remove(temp_audio_path)
         st.rerun()
+
+def save_summary(username, title, summary, tags):
+    c.execute('INSERT INTO summaries (username, title, summary, tags, date) VALUES (?, ?, ?, ?, datetime("now"))', (username, title, summary, tags))
+    conn.commit()
 
 def main():
     # Initialize session state
