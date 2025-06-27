@@ -189,10 +189,19 @@ def review_summaries():
             st.subheader(title if title else "(No Title)")
             st.caption(f"Tags: {tags if tags else 'None'} | Saved: {date}")
             st.write(summary)
+            delete_key = f"delete_{title}_{date}"
+            if st.button("Delete Summary", key=delete_key):
+                delete_summary(st.session_state["username"], title, date)
+                st.success(f"Summary '{title}' deleted successfully!")
+                st.rerun()
             st.markdown("---")
     if st.button("Back to Menu"):
         st.session_state["page"] = "main"
         st.rerun()
+
+def delete_summary(username, title, date):
+    c.execute('DELETE FROM summaries WHERE username=? AND title=? AND date=?', (username, title, date))
+    conn.commit()
 
 def main():
     # Initialize session state
