@@ -75,6 +75,10 @@ def main_menu():
         if st.button("Transcribe"):
             st.session_state["page"] = "transcribe"
             st.rerun()
+    
+    if st.button("View Past Summaries"):
+        st.session_state["page"] = "review"
+        st.rerun()
 
     if st.button("Logout"):
         st.session_state.clear()
@@ -174,6 +178,22 @@ def save_summary(username, title, summary, tags):
     c.execute('INSERT INTO summaries (username, title, summary, tags, date) VALUES (?, ?, ?, ?, datetime("now"))', (username, title, summary, tags))
     conn.commit()
 
+def review_summaries():
+    st.title("Your Saved Summaries")
+    c.execute('SELECT title, summary, tags, date FROM summaries WHERE username=? ORDER BY date DESC', (st.session_state["username"],))
+    rows = c.fetchall()
+    if not rows:
+        st.info("You have no saved summaries.")
+    else:
+        for title, summary, tags, date in rows:
+            st.subheader(title if title else "(No Title)")
+            st.caption(f"Tags: {tags if tags else 'None'} | Saved: {date}")
+            st.write(summary)
+            st.markdown("---")
+    if st.button("Back to Menu"):
+        st.session_state["page"] = "main"
+        st.rerun()
+
 def main():
     # Initialize session state
     if "logged_in" not in st.session_state:
@@ -190,6 +210,8 @@ def main():
             main_menu()
         elif st.session_state["page"] == "transcribe":
             transcribe_page()
+        elif st.session_state["page"] == "review":
+            review_summaries()
 
 if __name__ == "__main__":
     main()
