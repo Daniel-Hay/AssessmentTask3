@@ -88,31 +88,36 @@ def transcribe_page():
     st.title("Transcription Result")
 
     uploaded_file = st.session_state.get("audio_file", None)
-    if uploaded_file:
-        # Save uploaded file to a temporary file with correct extension
+    temp_audio_path = st.session_state.get("temp_audio_path", None)
+    result = st.session_state.get("result", None)
+
+    # Only create temp file and transcribe if not already done
+    if uploaded_file and (not temp_audio_path or not os.path.exists(temp_audio_path) or not result):
         file_extension = uploaded_file.name.split(".")[-1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
             uploaded_file.seek(0)
             tmp_file.write(uploaded_file.read())
             temp_audio_path = tmp_file.name
+            st.session_state["temp_audio_path"] = temp_audio_path
 
-        # Load whisper model
         model = get_whisper_model()
-
-        # Check for empty or invalid audio before transcription
         try:
             audio = whisper.load_audio(temp_audio_path)
             if audio is None or (isinstance(audio, np.ndarray) and audio.size == 0):
                 st.error("The uploaded audio file is empty or invalid. Please upload a valid audio file.")
                 os.remove(temp_audio_path)
+                st.session_state["temp_audio_path"] = None
                 return
             result = model.transcribe(temp_audio_path)
+            st.session_state["result"] = result
         except Exception as e:
             st.error(f"Failed to transcribe audio: {e}")
-            os.remove(temp_audio_path)
+            if temp_audio_path and os.path.exists(temp_audio_path):
+                os.remove(temp_audio_path)
+            st.session_state["temp_audio_path"] = None
             return
 
-        # Session state controling UI
+        # Show transcription progress only once
         if "transcription_shown" not in st.session_state:
             st.success(f"Transcribing: {uploaded_file.name}... Please wait.")
             st.write("Audio shape:", audio.shape)
@@ -120,6 +125,11 @@ def transcribe_page():
             st.session_state["transcription_shown"] = True
             st.rerun()
 
+    # Use stored result and temp path
+    result = st.session_state.get("result", None)
+    temp_audio_path = st.session_state.get("temp_audio_path", None)
+
+    if result:
         st.write(result["text"])
 
         # Count sentence length 
@@ -137,8 +147,8 @@ def transcribe_page():
             if st.button("Summarise Transcription"):
                 try:
                     ratio = min(1.0, num_sentences / sentence_count)
-                    summarizer = summarize(result["text"], ratio=ratio)
-                    summary = summarizer if summarizer else "Summary could not be generated. Text may be too short."
+                    summary = summarize(result["text"], ratio=ratio)
+                    summary = summary if summary else "Summary could not be generated. Text may be too short."
                 except Exception as e:
                     summary = f"Error generating summary: {e}"
                 st.session_state["summary"] = summary
@@ -163,15 +173,20 @@ def transcribe_page():
                 st.success("Summary saved successfully!")
                 st.session_state["pending_save"] = False
                 st.session_state["pending_summary"] = ""
-
     else:
         st.warning("No audio file found. Please upload and transcribe again.")
 
+    # Only delete the temp file when leaving the page
     if st.button("Back to Menu"):
         st.session_state["page"] = "main"
         st.session_state["show_summary"] = False
         st.session_state["transcription_shown"] = False
-        os.remove(temp_audio_path)
+        temp_audio_path = st.session_state.get("temp_audio_path")
+        if temp_audio_path and os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
+        st.session_state["temp_audio_path"] = None
+        st.session_state["result"] = None
+        st.session_state["audio_file"] = None
         st.rerun()
 
 def save_summary(username, title, summary, tags):
