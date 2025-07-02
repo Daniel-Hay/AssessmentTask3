@@ -12,7 +12,6 @@ from summa.summarizer import summarize
 def get_whisper_model():
     return whisper.load_model("tiny")
 
-# --- User Database Using sqlite ---
 conn = sqlite3.connect('data.db')
 c = conn.cursor()
 c.execute('CREATE TABLE IF NOT EXISTS userstable (username TEXT, password TEXT)')
@@ -125,7 +124,6 @@ def transcribe_page():
             st.session_state["transcription_shown"] = True
             st.rerun()
 
-    # Use stored result and temp path
     result = st.session_state.get("result", None)
     temp_audio_path = st.session_state.get("temp_audio_path", None)
 
