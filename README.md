@@ -21,6 +21,14 @@ To run the application on your computer:
 5. Use the command: streamlit run (file location)
 6. Follow the onscreen instructions
 
+## Features:
+- Uploading supported audio files (e.g .mp3 and .wav)
+- Transcription of audio
+- Summarisation of text
+- Cutomisation of summary length
+- Ability to view past summaries
+- Ability to delete past summaries
+
 ## Notes:
 Project uses Python 3.9.1
 
