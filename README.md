@@ -8,7 +8,7 @@ Transcription and Summarisation Tool
 ## How to run the program
 ### Option 1: 
 As I have deployed the app using streamlit, no other external dependecies are required, all you need is the link:
-https://assessment-task3-shout-audio.streamlit.app/
+https://task3-shout-audiotranscription.streamlit.app/
 
 However, as I am using the Streamlit Community Cloud, the filesystem is temporary, therefore changes aren't seen within the data.db file.
 Additionally, the app can't be ran on the school internet
