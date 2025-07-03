@@ -1,5 +1,5 @@
 import unittest
-from testwhisper import hash_password, add_user, login_user, save_summary, c, conn
+from main import hash_password, add_user, login_user, save_summary, c, conn
 
 class TestWhisperApp(unittest.TestCase):
     def test_hash_password(self):
