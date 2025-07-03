@@ -1,5 +1,4 @@
 ffmpeg-python==0.2.0
-git+https://github.com/openai/whisper.git
 numpy==1.24.3
 openai_whisper==20240930
 streamlit==1.46.1
